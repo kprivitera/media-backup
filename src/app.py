@@ -3,8 +3,11 @@ from routes.backup_upload import backup_upload_bp
 from routes.backup_list import backup_list_bp
 from routes.auth import auth_bp
 from services.database import PostgresDB
+from dotenv import load_dotenv
+import os
 
 URL_PREFIX = "/api"
+load_dotenv()
 app = Flask(__name__)
 
 # Initialize the database
@@ -13,8 +16,9 @@ db = PostgresDB(
 )
 db.connect()
 
-# Attach the db instance to the app's config
+# Attach the the apps config
 app.config["db"] = db
+app.config["JWT_AUTH_TOKEN"] = os.getenv("JWT_AUTH_TOKEN")
 
 # Register Blueprints
 app.register_blueprint(backup_upload_bp, url_prefix=URL_PREFIX)

@@ -1,8 +1,9 @@
+import os
 from functools import wraps
 import jwt
-from flask import request, jsonify, g
+from flask import request, jsonify, g, current_app
 
-SECRET_KEY = "your-very-secure-secret-key"
+SECRET_KEY = os.getenv("JWT_AUTH_TOKEN")
 
 def jwt_required(f):
     """Decorator to protect routes with JWT validation."""
@@ -16,6 +17,7 @@ def jwt_required(f):
 
 def validate_jwt():
     """Validate the JWT from the Authorization header."""
+    jwt_secret_key = current_app.config["JWT_AUTH_TOKEN"]
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         return jsonify({"error": "Authorization header is missing"}), 401
@@ -23,7 +25,7 @@ def validate_jwt():
     try:
         # Extract the token from the "Bearer <token>" format
         token = auth_header.split(" ")[1]
-        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        decoded_token = jwt.decode(token, jwt_secret_key, algorithms=["HS256"])
         g.decoded_token = decoded_token  # Store the decoded token in Flask's `g` object
         return decoded_token
     except jwt.ExpiredSignatureError:

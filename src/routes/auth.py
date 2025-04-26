@@ -1,15 +1,14 @@
-from flask import Blueprint, request
+import os
+from flask import Blueprint, request, current_app
 import jwt
 from datetime import datetime, timedelta
-
-SECRET_KEY = "your-very-secure-secret-key"
 
 # Create a Blueprint for the login route
 auth_bp = Blueprint("auth", __name__)
 
-
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    jwt_secret_key = current_app.config["JWT_AUTH_TOKEN"]
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -23,7 +22,7 @@ def login():
                 "exp": datetime.utcnow()
                 + timedelta(hours=1),  # Token expires in 1 hour
             },
-            SECRET_KEY,
+            jwt_secret_key,
             algorithm="HS256",
         )
         return {"token": token}, 200
