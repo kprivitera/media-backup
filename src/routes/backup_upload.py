@@ -1,6 +1,12 @@
 from flask import Blueprint, request, g, current_app
 from utils.metadata_utils import get_date_by_file_type
-from models.upload_model import save_file, generate_unique_filename, compute_file_hash, insert_file_metadata
+from models.backup_upload_model import (
+    save_file,
+    generate_unique_filename,
+    compute_file_hash,
+    insert_file_metadata,
+    check_file_hash_exists
+)
 from models.auth_model import jwt_required
 import os
 from datetime import datetime
@@ -28,7 +34,11 @@ def upload_file():
         return "No file uploaded", 400
 
     file = request.files[UPLOAD_KEY]
-    media_type = "image" if file.mimetype.startswith("image/") else "video" if file.mimetype.startswith("video/") else None
+    media_type = (
+        "image"
+        if file.mimetype.startswith("image/")
+        else "video" if file.mimetype.startswith("video/") else None
+    )
 
     # Validate filename exists
     if file.filename == "":
@@ -40,6 +50,7 @@ def upload_file():
 
     # Process metadata
     date = get_date_by_file_type(file)
+    print(f"Extracted date: {date}")
     if date is None:
         return "Invalid or unsupported metadata", 415
 
@@ -55,11 +66,23 @@ def upload_file():
 
     # Generate file hash
     file_hash = compute_file_hash(file)
+    print(f"File hash: {file_hash}")
+
+    # Check if the file hash already exists in the database
+    db = current_app.config["db"]
+    try:
+        if check_file_hash_exists(db, file_hash):
+            return "File already exists", 409
+    except Exception as e:
+        return f"Error checking file hash: {e}", 500
+
+    print(f"File hash: {file_hash}")
 
     # Insert metadata into the database
     try:
-        db = current_app.config["db"]
-        insert_file_metadata(db, file.filename, file_path, media_type, metadata_date, file_hash, user_id)
+        insert_file_metadata(
+            db, file.filename, file_path, media_type, metadata_date, file_hash, user_id
+        )
     except Exception as e:
         return f"Error saving to database: {e}", 500
 

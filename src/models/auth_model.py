@@ -5,15 +5,21 @@ from flask import request, jsonify, g, current_app
 
 SECRET_KEY = os.getenv("JWT_AUTH_TOKEN")
 
+
 def jwt_required(f):
     """Decorator to protect routes with JWT validation."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         validation_result = validate_jwt()
-        if isinstance(validation_result, tuple):  # If validation failed, return the error response
+        if isinstance(
+            validation_result, tuple
+        ):  # If validation failed, return the error response
             return validation_result
         return f(*args, **kwargs)  # Proceed to the route if validation passed
+
     return decorated_function
+
 
 def validate_jwt():
     """Validate the JWT from the Authorization header."""

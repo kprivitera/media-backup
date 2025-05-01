@@ -3,9 +3,26 @@ from PIL.ExifTags import TAGS
 import subprocess
 from pillow_heif import register_heif_opener
 from datetime import datetime
+import os
+
+DATE_FORMAT = "%Y:%m:%d"
 
 # Register HEIC support for Pillow
 register_heif_opener()
+
+
+def get_current_date():
+    return datetime.now().strftime(DATE_FORMAT)
+
+
+def get_file_creation_date(filepath):
+    try:
+        # Get the file's last modification time
+        timestamp = os.path.getmtime(filepath)
+        return datetime.fromtimestamp(timestamp).strftime(DATE_FORMAT)
+    except Exception as e:
+        print(f"Error retrieving file creation date: {e}")
+        return None
 
 
 def extract_image_metadata(filepath):
@@ -30,20 +47,35 @@ def extract_image_metadata(filepath):
     return metadata
 
 
+def get_fallback_date(filepath):
+    """
+    Fallback logic to retrieve a date for a file.
+    Tries the file creation/modification date, then falls back to the current date.
+    """
+    # Try to get the file creation/modification date
+    file_date = get_file_creation_date(filepath)
+    if file_date:
+        return file_date
+
+    # Final fallback to the current date
+    return get_current_date()
+
+
 def extract_image_date(filepath):
+    print("regular image")
     metadata = extract_image_metadata(filepath)
+    print(f"regular image metadata: {metadata}")
 
+    # Try to get the date from EXIF metadata
     if metadata.get("exif"):
-        # Try to get DateTimeOriginal first
-        date_str = metadata["exif"].get("DateTimeOriginal")
-        if not date_str:
-            # Fallback to DateTime if DateTimeOriginal is not available
-            date_str = metadata["exif"].get("DateTime")
-
+        date_str = metadata["exif"].get("DateTimeOriginal") or metadata["exif"].get(
+            "DateTime"
+        )
         if date_str:
             return date_str.split(" ")[0]  # Return only the date part (YYYY:MM:DD)
 
-    return None
+    # Use the fallback utility
+    return get_fallback_date(filepath)
 
 
 def extract_heic_date(filepath):
@@ -55,6 +87,7 @@ def extract_heic_date(filepath):
 
             # Check for EXIF metadata
             exif_data = img.getexif()
+
             if not exif_data:
                 print("No EXIF metadata found.")
                 return None
@@ -63,20 +96,18 @@ def extract_heic_date(filepath):
             date_str = exif_data.get(36867) or exif_data.get(
                 306
             )  # Use 306 as a fallback
+
             if not date_str:
                 print("No valid date found in EXIF metadata.")
                 return None
 
-            # Parse the date string into a datetime object
-            try:
-                capture_date = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
-                return capture_date
-            except ValueError:
-                print(f"Error parsing date string: {date_str}")
-                return None
+            # Parse the date string and return only the date part (YYYY:MM:DD)
+            date_parts = date_str.split(" ")
+            if len(date_parts) > 0:
+                return date_parts[0]  # Return only the date part (YYYY:MM:DD)
     except Exception as e:
         print(f"Error extracting capture date: {str(e)}")
-        return None
+        return get_fallback_date(filepath)  # Use fallback utility
 
 
 def extract_video_date(filepath):
@@ -122,4 +153,5 @@ def get_date_by_file_type(file):
         date = extract_video_date(file)
         print(f"Video date: {date}")
 
+    print(f"get_date_by_file_type: {date}")
     return str(date) if date else None

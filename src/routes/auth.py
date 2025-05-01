@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 # Create a Blueprint for the login route
 auth_bp = Blueprint("auth", __name__)
 
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     jwt_secret_key = current_app.config["JWT_AUTH_TOKEN"]
